@@ -20,6 +20,7 @@ Mask, can, cellphone, electronics, gbottle, glove, metal, misc, net, pbag, pbott
 
 ```bash
 pip install -r 1-image-detect/requirements.txt
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
 python main.py
 ```
 
@@ -54,4 +55,5 @@ In each folder's `app.py`:
 - Webcam mode needs `localhost` or HTTPS; browsers block camera access on plain HTTP otherwise. Image and video modes work anywhere.
 - The video app loops the file automatically.
 - The FPS meter denominator uses `requestVideoFrameCallback` (Chrome/Edge/Safari). Without it, the denominator falls back to the capture-tick rate.
+- GPU inference needs CUDA Torch. Check it with `python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"`.
 - Deployment (Render, Railway, PythonAnywhere, etc.): point the start command at `main.py` at the root, and make `best.pt` available one level up from each app folder as expected by `MODEL_PATH`.
