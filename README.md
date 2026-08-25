@@ -5,10 +5,12 @@ Three Flask apps running a YOLO11n model (`best.pt`, 15 classes) in a browser:
 | Folder | Port | What it does |
 |---|---|---|
 | `1-image-detect` | 5001 | Upload an image, detection runs once, boxes drawn on the result |
-| `2-webcam-detect` | 5002 | Live webcam detection, ~10 FPS |
-| `3-video-live-detect` | 5003 | Upload a video that plays like a live camera feed; detection runs during playback |
+| `2-webcam-detect` | 5002 | Live webcam detection; only frames that complete inference are displayed |
+| `3-video-live-detect` | 5003 | Upload a video that plays like a live camera feed; only frames that complete inference are displayed |
 
 All three share `best.pt` from this root folder and use the same minimal API: the browser sends a JPEG frame to `POST /detect`, the server returns JSON boxes (`box`, `conf`, `cls`), the browser draws the overlay.
+
+On the two live pages the raw video is never shown directly. The display canvas updates only after a frame completes inference; frames with no detections are still shown, just without boxes. The status line is a meter like `12/30 fps | 3 object(s)`: inference passes per second / source frame rate (camera or video, via `requestVideoFrameCallback` where available), plus the object count from the latest inferred frame.
 
 ## Classes
 
@@ -50,5 +52,6 @@ In each folder's `app.py`:
 ## Notes
 
 - Webcam mode needs `localhost` or HTTPS; browsers block camera access on plain HTTP otherwise. Image and video modes work anywhere.
-- The video app loops the file automatically and pauses detection when the video is paused.
+- The video app loops the file automatically.
+- The FPS meter denominator uses `requestVideoFrameCallback` (Chrome/Edge/Safari). Without it, the denominator falls back to the capture-tick rate.
 - Deployment (Render, Railway, PythonAnywhere, etc.): point the start command at `main.py` at the root, and make `best.pt` available one level up from each app folder as expected by `MODEL_PATH`.

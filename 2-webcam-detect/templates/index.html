@@ -13,8 +13,7 @@ h1{font-size:clamp(2.4rem,6vw,4.25rem);font-weight:700;letter-spacing:-.04em;lin
 button{display:inline-block;border:1px solid #141414;background:transparent;color:#141414;font:11px/1 ui-monospace,"SF Mono","Courier New",monospace;letter-spacing:.15em;text-transform:uppercase;padding:.85rem 1.5rem;cursor:pointer}
 button:hover{background:#141414;color:#ECEAE4}
 #stage{position:relative;border:1px solid #D5D1C8;background:#F5F3EE;min-height:14rem;display:flex;align-items:center;justify-content:center;overflow:hidden}
-#stage video,#stage canvas{display:block;width:100%;height:auto}
-#overlay{position:absolute;inset:0;display:none}
+#stage canvas{display:block;width:100%;height:auto}
 .placeholder{color:#8B877E;padding:5rem 1rem;font-size:14px}
 #status{margin-top:1rem;font:11px/1.6 ui-monospace,"SF Mono","Courier New",monospace;letter-spacing:.12em;text-transform:uppercase;color:#57544E}
 </style>
@@ -22,7 +21,7 @@ button:hover{background:#141414;color:#ECEAE4}
 <body>
 <p class="eyebrow">02 &mdash; Live Webcam</p>
 <h1>Start the camera.<br>Watch it think.</h1>
-<p class="lede">Frames stream to the model about ten times a second. Boxes are drawn as the answers come back.</p>
+<p class="lede">Only frames that complete inference are shown. Boxes appear when the model finds objects.</p>
 <button id="toggle">Start camera</button>
 <div id="stage"><p class="placeholder">Camera is off.</p></div>
 <p id="status">Idle.</p>
@@ -32,10 +31,12 @@ const toggleBtn = document.getElementById('toggle');
 const stage = document.getElementById('stage');
 const statusEl = document.getElementById('status');
 let running = false, busy = false, stream = null;
-let video, overlay;
+let video, display;
+let srcCount = 0, infCount = 0, lastDets = 0;
 
 // ponytail: fixed tick + in-flight guard instead of a frame queue
 setInterval(loop, 100);
+setInterval(meter, 1000);
 
 toggleBtn.addEventListener('click', async () => {
   if (running) {
@@ -52,19 +53,26 @@ toggleBtn.addEventListener('click', async () => {
   video = document.createElement('video');
   video.muted = true;
   video.playsInline = true;
+  video.style.display = 'none';
   video.srcObject = stream;
   stage.appendChild(video);
   await video.play();
   const scale = 640 / Math.max(video.videoWidth, video.videoHeight);
-  overlay = document.createElement('canvas');
-  overlay.id = 'overlay';
-  overlay.width = Math.round(video.videoWidth * scale);
-  overlay.height = Math.round(video.videoHeight * scale);
-  stage.appendChild(overlay);
+  display = document.createElement('canvas');
+  display.id = 'display';
+  display.width = Math.round(video.videoWidth * scale);
+  display.height = Math.round(video.videoHeight * scale);
+  stage.appendChild(display);
+  if (video.requestVideoFrameCallback) video.requestVideoFrameCallback(countSrc);
   running = true;
   toggleBtn.textContent = 'Stop camera';
-  statusEl.textContent = 'Detecting...';
+  statusEl.textContent = 'Waiting for first inference...';
 });
+
+function countSrc() {
+  srcCount++;
+  if (running) video.requestVideoFrameCallback(countSrc);
+}
 
 function stop() {
   running = false;
@@ -77,18 +85,21 @@ function stop() {
 async function loop() {
   if (!running || busy || video.readyState < 2) return;
   busy = true;
-  const t0 = performance.now();
   try {
     const cap = document.createElement('canvas');
-    cap.width = overlay.width;
-    cap.height = overlay.height;
+    cap.width = display.width;
+    cap.height = display.height;
     cap.getContext('2d').drawImage(video, 0, 0, cap.width, cap.height);
+    if (!video.requestVideoFrameCallback) srcCount++;
     const blob = await new Promise(r => cap.toBlob(r, 'image/jpeg', 0.7));
     const res = await fetch('/detect', {method: 'POST', body: blob});
     if (!res.ok) throw new Error(await res.text());
     const dets = await res.json();
-    draw(dets);
-    statusEl.textContent = dets.length + ' object(s) | ' + Math.round(performance.now() - t0) + ' ms/frame';
+    infCount++;
+    lastDets = dets.length;
+    const ctx = display.getContext('2d');
+    ctx.drawImage(cap, 0, 0, display.width, display.height);
+    boxes(ctx, dets);
   } catch (e) {
     statusEl.textContent = 'Error: ' + e.message;
   } finally {
@@ -96,9 +107,14 @@ async function loop() {
   }
 }
 
-function draw(dets) {
-  const ctx = overlay.getContext('2d');
-  ctx.clearRect(0, 0, overlay.width, overlay.height);
+function meter() {
+  if (!running) return;
+  statusEl.textContent = infCount + '/' + srcCount + ' fps | ' + lastDets + ' object(s)';
+  infCount = 0;
+  srcCount = 0;
+}
+
+function boxes(ctx, dets) {
   ctx.lineWidth = 2;
   ctx.font = '13px ui-monospace, "Courier New", monospace';
   for (const d of dets) {
