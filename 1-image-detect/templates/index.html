@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Image Detection</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font:15px/1.6 "Helvetica Neue",Helvetica,Arial,sans-serif;background:#ECEAE4;color:#141414;max-width:68rem;margin:0 auto;padding:3rem 1.5rem 4rem}
+.eyebrow{font:11px/1 ui-monospace,"SF Mono","Courier New",monospace;letter-spacing:.18em;text-transform:uppercase;color:#B04324;margin-bottom:1.4rem}
+h1{font-size:clamp(2.4rem,6vw,4.25rem);font-weight:700;letter-spacing:-.04em;line-height:.95;margin-bottom:1.5rem}
+.lede{color:#57544E;max-width:34rem;margin-bottom:2rem}
+button,.filebtn{display:inline-block;border:1px solid #141414;background:transparent;color:#141414;font:11px/1 ui-monospace,"SF Mono","Courier New",monospace;letter-spacing:.15em;text-transform:uppercase;padding:.85rem 1.5rem;cursor:pointer}
+button:hover,.filebtn:hover{background:#141414;color:#ECEAE4}
+input[type=file]{display:none}
+#stage{position:relative;border:1px solid #D5D1C8;background:#F5F3EE;min-height:14rem;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#stage img,#stage canvas{display:block;width:100%;height:auto}
+#overlay{position:absolute;inset:0}
+.placeholder{color:#8B877E;padding:5rem 1rem;font-size:14px}
+#status{margin-top:1rem;font:11px/1.6 ui-monospace,"SF Mono","Courier New",monospace;letter-spacing:.12em;text-transform:uppercase;color:#57544E}
+.hint{margin-top:.4rem;font-size:13px;color:#8B877E;max-width:34rem}
+</style>
+</head>
+<body>
+<p class="eyebrow">01 &mdash; Image Detection</p>
+<h1>Drop an image.<br>Get the objects.</h1>
+<p class="lede">Pick a file. The model runs once and draws every object it finds, with class and confidence.</p>
+<label class="filebtn">Choose image<input type="file" id="file" accept="image/*"></label>
+<div id="stage"><p class="placeholder">No image selected.</p></div>
+<p id="status">Model loaded. Waiting for image.</p>
+<p class="hint">Classes: Mask, can, cellphone, electronics, gbottle, glove, metal, misc, net, pbag, pbottle, plastic, rod, sunglasses, tire.</p>
+
+<script>
+const fileInput = document.getElementById('file');
+const stage = document.getElementById('stage');
+const statusEl = document.getElementById('status');
+
+fileInput.addEventListener('change', async () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    stage.innerHTML = '';
+    stage.appendChild(img);
+    const overlay = document.createElement('canvas');
+    overlay.id = 'overlay';
+    overlay.width = img.naturalWidth;
+    overlay.height = img.naturalHeight;
+    stage.appendChild(overlay);
+    detect(img);
+    URL.revokeObjectURL(url);
+  };
+  img.src = url;
+});
+
+async function detect(img) {
+  statusEl.textContent = 'Running detection...';
+  const t0 = performance.now();
+  try {
+    const res = await fetch('/detect', {method: 'POST', body: await fileToBytes()});
+    if (!res.ok) throw new Error(await res.text());
+    const dets = await res.json();
+    draw(dets);
+    statusEl.textContent = dets.length + ' object(s) in ' + Math.round(performance.now() - t0) + ' ms.';
+  } catch (e) {
+    statusEl.textContent = 'Error: ' + e.message;
+  }
+}
+
+function fileToBytes() {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.onerror = reject;
+    fr.readAsArrayBuffer(fileInput.files[0]);
+  });
+}
+
+function draw(dets) {
+  const ctx = document.getElementById('overlay').getContext('2d');
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  ctx.lineWidth = 2;
+  ctx.font = '13px ui-monospace, "Courier New", monospace';
+  for (const d of dets) {
+    const [x1, y1, x2, y2] = d.box;
+    ctx.strokeStyle = '#141414';
+    ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    const label = d.cls + ' ' + d.conf.toFixed(2);
+    const w = ctx.measureText(label).width + 12;
+    ctx.fillStyle = '#F5F3EE';
+    ctx.fillRect(x1, y1 - 20, w, 20);
+    ctx.strokeRect(x1, y1 - 20, w, 20);
+    ctx.fillStyle = '#141414';
+    ctx.fillText(label, x1 + 6, y1 - 6);
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video Live Detection</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font:15px/1.6 "Helvetica Neue",Helvetica,Arial,sans-serif;background:#ECEAE4;color:#141414;max-width:68rem;margin:0 auto;padding:3rem 1.5rem 4rem}
+.eyebrow{font:11px/1 ui-monospace,"SF Mono","Courier New",monospace;letter-spacing:.18em;text-transform:uppercase;color:#B04324;margin-bottom:1.4rem}
+h1{font-size:clamp(2.4rem,6vw,4.25rem);font-weight:700;letter-spacing:-.04em;line-height:.95;margin-bottom:1.5rem}
+.lede{color:#57544E;max-width:34rem;margin-bottom:2rem}
+.filebtn{display:inline-block;border:1px solid #141414;background:transparent;color:#141414;font:11px/1 ui-monospace,"SF Mono","Courier New",monospace;letter-spacing:.15em;text-transform:uppercase;padding:.85rem 1.5rem;cursor:pointer}
+.filebtn:hover{background:#141414;color:#ECEAE4}
+input[type=file]{display:none}
+#stage{position:relative;border:1px solid #D5D1C8;background:#F5F3EE;min-height:14rem;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#stage video,#stage canvas{display:block;width:100%;height:auto}
+#overlay{position:absolute;inset:0;display:none;pointer-events:none}
+.placeholder{color:#8B877E;padding:5rem 1rem;font-size:14px}
+#status{margin-top:1rem;font:11px/1.6 ui-monospace,"SF Mono","Courier New",monospace;letter-spacing:.12em;text-transform:uppercase;color:#57544E}
+.hint{margin-top:.4rem;font-size:13px;color:#8B877E;max-width:34rem}
+</style>
+</head>
+<body>
+<p class="eyebrow">03 &mdash; Video as Live Feed</p>
+<h1>Play the video.<br>Detect it live.</h1>
+<p class="lede">Your file plays like a camera feed. Detection runs during playback, frame by frame, in real time.</p>
+<label class="filebtn">Choose video<input type="file" id="file" accept="video/*"></label>
+<div id="stage"><p class="placeholder">No video selected.</p></div>
+<p id="status">Idle.</p>
+<p class="hint">The video loops automatically. Pause to pause detection.</p>
+
+<script>
+const fileInput = document.getElementById('file');
+const stage = document.getElementById('stage');
+const statusEl = document.getElementById('status');
+let busy = false;
+let video, overlay;
+
+// ponytail: fixed tick + in-flight guard instead of a frame queue
+setInterval(loop, 100);
+
+fileInput.addEventListener('change', () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+  stage.innerHTML = '';
+  video = document.createElement('video');
+  video.muted = true;
+  video.loop = true;
+  video.playsInline = true;
+  video.controls = true;
+  video.src = URL.createObjectURL(file);
+  stage.appendChild(video);
+  overlay = document.createElement('canvas');
+  overlay.id = 'overlay';
+  stage.appendChild(overlay);
+  video.addEventListener('loadedmetadata', () => {
+    const scale = 640 / Math.max(video.videoWidth, video.videoHeight);
+    overlay.width = Math.round(video.videoWidth * scale);
+    overlay.height = Math.round(video.videoHeight * scale);
+    overlay.style.display = 'block';
+    video.play().catch(() => {});
+    statusEl.textContent = 'Detecting...';
+  });
+});
+
+async function loop() {
+  if (!video || busy || video.readyState < 2 || video.paused || video.ended) return;
+  busy = true;
+  const t0 = performance.now();
+  try {
+    const cap = document.createElement('canvas');
+    cap.width = overlay.width;
+    cap.height = overlay.height;
+    cap.getContext('2d').drawImage(video, 0, 0, cap.width, cap.height);
+    const blob = await new Promise(r => cap.toBlob(r, 'image/jpeg', 0.7));
+    const res = await fetch('/detect', {method: 'POST', body: blob});
+    if (!res.ok) throw new Error(await res.text());
+    const dets = await res.json();
+    draw(dets);
+    statusEl.textContent = dets.length + ' object(s) | ' + Math.round(performance.now() - t0) + ' ms/frame';
+  } catch (e) {
+    statusEl.textContent = 'Error: ' + e.message;
+  } finally {
+    busy = false;
+  }
+}
+
+function draw(dets) {
+  const ctx = overlay.getContext('2d');
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+  ctx.lineWidth = 2;
+  ctx.font = '13px ui-monospace, "Courier New", monospace';
+  for (const d of dets) {
+    const [x1, y1, x2, y2] = d.box;
+    ctx.strokeStyle = '#141414';
+    ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    const label = d.cls + ' ' + d.conf.toFixed(2);
+    const w = ctx.measureText(label).width + 12;
+    ctx.fillStyle = '#F5F3EE';
+    ctx.fillRect(x1, y1 - 20, w, 20);
+    ctx.strokeRect(x1, y1 - 20, w, 20);
+    ctx.fillStyle = '#141414';
+    ctx.fillText(label, x1 + 6, y1 - 6);
+  }
+}
+</script>
+</body>
+</html>
