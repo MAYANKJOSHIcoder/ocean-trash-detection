@@ -1,6 +1,6 @@
 # Object Detection Web Apps
 
-Three standalone Flask apps running a YOLO11n model (`best.pt`, 15 classes) in a browser:
+Three Flask apps running a YOLO11n model (`best.pt`, 15 classes) in a browser:
 
 | Folder | Port | What it does |
 |---|---|---|
@@ -18,25 +18,30 @@ Mask, can, cellphone, electronics, gbottle, glove, metal, misc, net, pbag, pbott
 
 ```bash
 pip install -r 1-image-detect/requirements.txt
-
-cd 1-image-detect      && python app.py   # http://localhost:5001
-cd 2-webcam-detect     && python app.py   # http://localhost:5002
-cd 3-video-live-detect && python app.py   # http://localhost:5003
+python main.py
 ```
 
-Each folder is standalone. Ports differ, so all three can run at once.
+`main.py` starts all three sites and keeps running, restarting any app that crashes. Press Ctrl+C to stop all three.
 
-## Test
+- `1-image-detect` → http://localhost:5001
+- `2-webcam-detect` → http://localhost:5002
+- `3-video-live-detect` → http://localhost:5003
+
+Each folder can also run standalone: `cd 1-image-detect && python app.py`. Ports differ, so all three can run at once.
+
+## Health check
+
+With the sites running (normally via `main.py`):
 
 ```bash
-python run_tests.py
+python checkhealth.py
 ```
 
-Starts each app, checks page markup, posts a synthetic JPEG to `/detect`, verifies the JSON contract and the 400 path for garbage input.
+Checks each site: page serves with the expected markup, `/detect` returns valid `box/conf/cls` JSON for a synthetic JPEG, and garbage input returns 400. Prints a PASS/FAIL report per site, lists issues, exits nonzero if anything is wrong (including a site that is not running).
 
 ## Configuration
 
-In each `app.py`:
+In each folder's `app.py`:
 
 - `MODEL_PATH` - points to `../best.pt`
 - `CONF` - confidence threshold, default `0.35`
@@ -46,4 +51,4 @@ In each `app.py`:
 
 - Webcam mode needs `localhost` or HTTPS; browsers block camera access on plain HTTP otherwise. Image and video modes work anywhere.
 - The video app loops the file automatically and pauses detection when the video is paused.
-- Deployment (Render, Railway, PythonAnywhere, etc.): point the start command at `app.py` in the folder you want, and make `best.pt` available one level up as expected by `MODEL_PATH`.
+- Deployment (Render, Railway, PythonAnywhere, etc.): point the start command at `main.py` at the root, and make `best.pt` available one level up from each app folder as expected by `MODEL_PATH`.
