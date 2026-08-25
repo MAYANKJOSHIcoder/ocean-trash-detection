@@ -10,7 +10,7 @@ Three Flask apps running a YOLO11n model (`best.pt`, 15 classes) in a browser:
 
 All three share `best.pt` from this root folder and use the same minimal API: the browser sends a JPEG frame to `POST /detect`, the server returns JSON boxes (`box`, `conf`, `cls`), the browser draws the overlay.
 
-On the two live pages the raw video is never shown directly. The display canvas updates only after a frame completes inference; frames with no detections are still shown, just without boxes. The status line is a meter like `12/30 fps | 3 object(s)`: inference passes per second / source frame rate (camera or video, via `requestVideoFrameCallback` where available), plus the object count from the latest inferred frame.
+On the two live pages the raw video is never shown directly. The display canvas updates only after a frame completes inference; frames with no detections are still shown, just without boxes. The status line is a meter like `12/30 fps | 38 ms | 3 object(s)`: inference passes per second / source frame rate (camera or video, via `requestVideoFrameCallback` where available), per-inference round-trip time in milliseconds (capture + upload + inference), and the object count from the latest inferred frame.
 
 ## Classes
 

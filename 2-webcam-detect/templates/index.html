@@ -32,7 +32,7 @@ const stage = document.getElementById('stage');
 const statusEl = document.getElementById('status');
 let running = false, busy = false, stream = null;
 let video, display;
-let srcCount = 0, infCount = 0, lastDets = 0;
+let srcCount = 0, infCount = 0, lastDets = 0, lastMs = 0;
 
 // ponytail: fixed tick + in-flight guard instead of a frame queue
 setInterval(loop, 100);
@@ -92,10 +92,12 @@ async function loop() {
     cap.getContext('2d').drawImage(video, 0, 0, cap.width, cap.height);
     if (!video.requestVideoFrameCallback) srcCount++;
     const blob = await new Promise(r => cap.toBlob(r, 'image/jpeg', 0.7));
+    const t0 = performance.now();
     const res = await fetch('/detect', {method: 'POST', body: blob});
     if (!res.ok) throw new Error(await res.text());
     const dets = await res.json();
     infCount++;
+    lastMs = Math.round(performance.now() - t0);
     lastDets = dets.length;
     const ctx = display.getContext('2d');
     ctx.drawImage(cap, 0, 0, display.width, display.height);
@@ -109,7 +111,7 @@ async function loop() {
 
 function meter() {
   if (!running) return;
-  statusEl.textContent = infCount + '/' + srcCount + ' fps | ' + lastDets + ' object(s)';
+  statusEl.textContent = infCount + '/' + srcCount + ' fps | ' + lastMs + ' ms | ' + lastDets + ' object(s)';
   infCount = 0;
   srcCount = 0;
 }
