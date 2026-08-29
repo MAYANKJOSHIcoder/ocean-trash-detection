@@ -1,59 +1,114 @@
-# Object Detection Web Apps
+# Object Detection Web App
 
-Three Flask apps running a YOLO11n model (`best.pt`, 15 classes) in a browser:
+Single-page Flask app with YOLO object detection. Three modes in one interface: Image upload, Live Webcam, and Video playback.
 
-| Folder | Port | What it does |
-|---|---|---|
-| `1-image-detect` | 5001 | Upload an image, detection runs once, boxes drawn on the result |
-| `2-webcam-detect` | 5002 | Live webcam detection; only frames that complete inference are displayed |
-| `3-video-live-detect` | 5003 | Upload a video that plays like a live camera feed; only frames that complete inference are displayed |
-
-All three share `best.pt` from this root folder and use the same minimal API: the browser sends a JPEG frame to `POST /detect`, the server returns JSON boxes (`box`, `conf`, `cls`), the browser draws the overlay.
-
-On the two live pages the raw video is never shown directly. The display canvas updates only after a frame completes inference; frames with no detections are still shown, just without boxes. The status line is a meter like `12/30 fps | 38 ms | 3 object(s)`: inference passes per second / source frame rate (camera or video, via `requestVideoFrameCallback` where available), per-inference round-trip time in milliseconds (capture + upload + inference), and the object count from the latest inferred frame.
-
-## Classes
-
-Mask, can, cellphone, electronics, gbottle, glove, metal, misc, net, pbag, pbottle, plastic, rod, sunglasses, tire
-
-## Run
+## Quick Start
 
 ```bash
-pip install -r 1-image-detect/requirements.txt
+# Install dependencies
+pip install -r backend/requirements.txt
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+
+# Run
 python main.py
+# or directly:
+python backend/app.py
 ```
 
-`main.py` starts all three sites and keeps running, restarting any app that crashes. Press Ctrl+C to stop all three.
+Open http://localhost:5000
 
-- `1-image-detect` → http://localhost:5001
-- `2-webcam-detect` → http://localhost:5002
-- `3-video-live-detect` → http://localhost:5003
+## Project Structure
 
-Each folder can also run standalone: `cd 1-image-detect && python app.py`. Ports differ, so all three can run at once.
-
-## Health check
-
-With the sites running (normally via `main.py`):
-
-```bash
-python checkhealth.py
+```
+model/
+├── model.txt              # Config: model=, conf=, port=
+├── backend/
+│   ├── app.py             # Flask server + API
+│   ├── detect.py          # ModelRegistry (lazy-load, GPU/CPU)
+│   └── requirements.txt
+├── frontend/
+│   ├── index.html         # Single page: hero + 3 tabs
+│   ├── style.css
+│   └── app.js
+├── best.pt                # Default model (15 custom classes)
+├── best_prerna.pt         # Alternative model
+├── nano.pt                # YOLO11n (COCO classes)
+├── main.py                # Launcher
+└── README.md
 ```
 
-Checks each site: page serves with the expected markup, `/detect` returns valid `box/conf/cls` JSON for a synthetic JPEG, and garbage input returns 400. Prints a PASS/FAIL report per site, lists issues, exits nonzero if anything is wrong (including a site that is not running).
+## Configuration (`model.txt`)
 
-## Configuration
+```ini
+model=best.pt      # Model filename (must exist in project root)
+conf=0.35          # Confidence threshold (0.0-1.0)
+port=5000          # HTTP port
+```
 
-In each folder's `app.py`:
+- **model**: `.pt` file in project root. Change and restart to switch models.
+- **conf**: Minimum confidence for detections. Lower = more detections (more false positives). 0.35 is balanced default.
+- **port**: Server port. Change and restart.
 
-- `MODEL_PATH` - points to `../best.pt`
-- `CONF` - confidence threshold, default `0.35`
-- `port` - last line of `app.py`
+**Fail-fast behavior**: If `model.txt` missing, `model=` empty, or model file not found — server exits with error.
 
-## Notes
+## UI
 
-- Webcam mode needs `localhost` or HTTPS; browsers block camera access on plain HTTP otherwise. Image and video modes work anywhere.
-- The video app loops the file automatically.
-- The FPS meter denominator uses `requestVideoFrameCallback` (Chrome/Edge/Safari). Without it, the denominator falls back to the capture-tick rate.
-- GPU inference needs CUDA Torch. Check it with `python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"`.
-- Deployment (Render, Railway, PythonAnywhere, etc.): point the start command at `main.py` at the root, and make `best.pt` available one level up from each app folder as expected by `MODEL_PATH`.
+- **Hero**: Title and description
+- **3 Tabs**: Image / Webcam / Video (switch without reload)
+- **Status line**: Shows FPS, inference time, object count
+
+### Image Tab
+- Click "Choose image" → select file → detection runs once → boxes drawn
+
+### Webcam Tab
+- Click "Start camera" → grants permission → live detection loop
+- Only frames completing inference are displayed
+- Click "Stop camera" to end
+
+### Video Tab
+- Click "Choose video" → select file → plays looped like webcam
+- Detection runs on each frame that completes inference
+
+## Models
+
+Place `.pt` files in project root. Server discovers all `*.pt` at startup.
+
+| Model | Classes | Source |
+|-------|---------|--------|
+| `best.pt` | 15 custom (Mask, can, cellphone, electronics, gbottle, glove, metal, misc, net, pbag, pbottle, plastic, rod, sunglasses, tire) | Custom trained |
+| `best_prerna.pt` | Custom | Custom trained |
+| `nano.pt` | 80 COCO (person, car, dog, etc.) | YOLO11n |
+
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/` | Serves frontend |
+| GET | `/api/models` | List discovered models with classes |
+| GET | `/api/model/current` | Active model name |
+| POST | `/api/detect` | Run inference (body: JPEG bytes) → JSON boxes |
+
+### Detection Response
+```json
+[
+  {"box": [x1, y1, x2, y2], "conf": 0.87, "cls": "cellphone"},
+  {"box": [x1, y1, x2, y2], "conf": 0.62, "cls": "plastic"}
+]
+```
+
+## GPU Support
+
+- Auto-detects CUDA: uses GPU if `torch.cuda.is_available()`, else CPU
+- For GPU: install CUDA-enabled PyTorch (see Quick Start)
+- Verify: `python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"`
+
+## Deployment
+
+- Point start command at `main.py` or `backend/app.py`
+- Ensure `best.pt` (and other models) are in project root
+- Set `port` in `model.txt` to match platform (e.g., `$PORT` on Render/Railway)
+- Webcam requires HTTPS or localhost (browser security)
+
+## License
+
+MIT

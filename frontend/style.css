@@ -1,0 +1,25 @@
+*{box-sizing:border-box;margin:0}
+body{font:15px/1.6 "Helvetica Neue",Helvetica,Arial,sans-serif;background:#ECEAE4;color:#141414;max-width:68rem;margin:0 auto;padding:3rem 1.5rem 4rem}
+.eyebrow{font:11px/1 ui-monospace,"SF Mono","Courier New",monospace;letter-spacing:.18em;text-transform:uppercase;color:#B04324;margin-bottom:1.4rem}
+h1{font-size:clamp(2.4rem,6vw,4.25rem);font-weight:700;letter-spacing:-.04em;line-height:.95;margin-bottom:1.5rem}
+.lede{color:#57544E;max-width:34rem;margin-bottom:2rem}
+button,.filebtn{display:inline-block;border:1px solid #141414;background:transparent;color:#141414;font:11px/1 ui-monospace,"SF Mono","Courier New",monospace;letter-spacing:.15em;text-transform:uppercase;padding:.85rem 1.5rem;cursor:pointer}
+button:hover,.filebtn:hover{background:#141414;color:#ECEAE4}
+input[type=file]{display:none}
+#stage{position:relative;border:1px solid #D5D1C8;background:#F5F3EE;min-height:14rem;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#stage img,#stage canvas{display:block;width:100%;height:auto}
+.placeholder{color:#8B877E;padding:5rem 1rem;font-size:14px}
+#status{margin-top:1rem;font:11px/1.6 ui-monospace,"SF Mono","Courier New",monospace;letter-spacing:.12em;text-transform:uppercase;color:#57544E}
+.hint{margin-top:.4rem;font-size:13px;color:#8B877E;max-width:34rem}
+
+.hero{margin-bottom:3rem;padding-bottom:2rem;border-bottom:1px solid #D5D1C8}
+.hero h1{margin-bottom:.5rem}
+.hero p{color:#57544E;margin-bottom:1.5rem}
+
+.tabs{display:flex;gap:.5rem;margin-bottom:2rem;border-bottom:1px solid #D5D1C8;padding-bottom:.5rem}
+.tabs button{background:transparent;border:1px solid transparent;padding:.75rem 1.25rem;font:11px/1 ui-monospace,"SF Mono","Courier New",monospace;letter-spacing:.15em;text-transform:uppercase;color:#57544E;cursor:pointer;border-radius:4px 4px 0 0}
+.tabs button:hover{border-color:#D5D1C8;background:#F5F3EE}
+.tabs button[aria-selected="true"]{border-color:#141414;background:#141414;color:#ECEAE4}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.hidden{display:none}

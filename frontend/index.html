@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Object Detection</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="hero">
+<h1>Object Detection</h1>
+<p>Upload images, use webcam, or play video — real-time YOLO detection</p>
+</header>
+
+<nav class="tabs" role="tablist">
+<button role="tab" data-tab="image" aria-selected="true">Image</button>
+<button role="tab" data-tab="webcam" aria-selected="false">Webcam</button>
+<button role="tab" data-tab="video" aria-selected="false">Video</button>
+</nav>
+
+<section id="tab-image" class="tab-panel active" role="tabpanel">
+<p class="eyebrow">Image Detection</p>
+<h1>Drop an image.<br>Get the objects.</h1>
+<p class="lede">Pick a file. The model runs once and draws every object it finds, with class and confidence.</p>
+<label class="filebtn">Choose image<input type="file" id="file-image" accept="image/*"></label>
+<div id="stage-image"><p class="placeholder">No image selected.</p></div>
+<p id="status-image">Model loaded. Waiting for image.</p>
+<p class="hint">Classes: Mask, can, cellphone, electronics, gbottle, glove, metal, misc, net, pbag, pbottle, plastic, rod, sunglasses, tire.</p>
+</section>
+
+<section id="tab-webcam" class="tab-panel" role="tabpanel">
+<p class="eyebrow">Live Webcam</p>
+<h1>Start the camera.<br>Watch it think.</h1>
+<p class="lede">Only frames that complete inference are shown. Boxes appear when the model finds objects.</p>
+<button id="toggle-webcam">Start camera</button>
+<div id="stage-webcam"><p class="placeholder">Camera is off.</p></div>
+<p id="status-webcam">Idle.</p>
+</section>
+
+<section id="tab-video" class="tab-panel" role="tabpanel">
+<p class="eyebrow">Video as Live Feed</p>
+<h1>Play the video.<br>Detect it live.</h1>
+<p class="lede">The video runs like a camera feed, but only frames that complete inference are shown. Boxes appear when the model finds objects.</p>
+<label class="filebtn">Choose video<input type="file" id="file-video" accept="video/*"></label>
+<div id="stage-video"><p class="placeholder">No video selected.</p></div>
+<p id="status-video">Idle.</p>
+<p class="hint">The video loops automatically.</p>
+</section>
+
+<script src="app.js"></script>
+</body>
+</html>
