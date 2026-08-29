@@ -6,10 +6,7 @@ h1{font-size:clamp(2.4rem,6vw,4.25rem);font-weight:700;letter-spacing:-.04em;lin
 button,.filebtn{display:inline-block;border:1px solid #141414;background:transparent;color:#141414;font:11px/1 ui-monospace,"SF Mono","Courier New",monospace;letter-spacing:.15em;text-transform:uppercase;padding:.85rem 1.5rem;cursor:pointer}
 button:hover,.filebtn:hover{background:#141414;color:#ECEAE4}
 input[type=file]{display:none}
-#stage{position:relative;border:1px solid #D5D1C8;background:#F5F3EE;min-height:14rem;display:flex;align-items:center;justify-content:center;overflow:hidden}
-#stage img,#stage canvas{display:block;width:100%;height:auto}
 .placeholder{color:#8B877E;padding:5rem 1rem;font-size:14px}
-#status{margin-top:1rem;font:11px/1.6 ui-monospace,"SF Mono","Courier New",monospace;letter-spacing:.12em;text-transform:uppercase;color:#57544E}
 .hint{margin-top:.4rem;font-size:13px;color:#8B877E;max-width:34rem}
 
 .hero{margin-bottom:3rem;padding-bottom:2rem;border-bottom:1px solid #D5D1C8}
@@ -22,4 +19,3 @@ input[type=file]{display:none}
 .tabs button[aria-selected="true"]{border-color:#141414;background:#141414;color:#ECEAE4}
 .tab-panel{display:none}
 .tab-panel.active{display:block}
-.hidden{display:none}

@@ -26,7 +26,8 @@ function setupTabs() {
 
 function switchTab(tab) {
   if (tab === activeTab) return;
-  stopMode(activeTab);
+  if (activeTab === 'webcam') stopWebcam();
+  else if (activeTab === 'video') stopVideo();
   activeTab = tab;
   tabs.forEach(btn => {
     btn.setAttribute('aria-selected', btn.dataset.tab === tab);
@@ -34,17 +35,8 @@ function switchTab(tab) {
   panels.forEach(p => {
     p.classList.toggle('active', p.id === 'tab-' + tab);
   });
-  startMode(tab);
-}
-
-function startMode(tab) {
   if (tab === 'webcam') startWebcam();
   else if (tab === 'video') startVideo();
-}
-
-function stopMode(tab) {
-  if (tab === 'webcam') stopWebcam();
-  else if (tab === 'video') stopVideo();
 }
 
 function setupImageMode() {
@@ -124,18 +116,17 @@ function setupWebcamMode() {
     s.display.width = Math.round(s.video.videoWidth * scale);
     s.display.height = Math.round(s.video.videoHeight * scale);
     s.stage.appendChild(s.display);
-    if (s.video.requestVideoFrameCallback) s.video.requestVideoFrameCallback(countSrcWebcam);
+    if (s.video.requestVideoFrameCallback) s.video.requestVideoFrameCallback(() => countSrc(s));
     s.running = true;
     s.toggleBtn.textContent = 'Stop camera';
     s.status.textContent = 'Waiting for first inference...';
   });
 }
 
-function countSrcWebcam() {
-  const s = state.webcam;
-  if (!s.video) return;
+function countSrc(s) {
+  if (!s.video || (s === state.video && (s.video.paused || s.video.ended))) return;
   s.srcCount++;
-  if (s.running) s.video.requestVideoFrameCallback(countSrcWebcam);
+  if (s.running !== false) s.video.requestVideoFrameCallback(() => countSrc(s));
 }
 
 function stopWebcam() {
@@ -171,18 +162,11 @@ function setupVideoMode() {
       s.display.width = Math.round(s.video.videoWidth * scale);
       s.display.height = Math.round(s.video.videoHeight * scale);
       s.stage.appendChild(s.display);
-      if (s.video.requestVideoFrameCallback) s.video.requestVideoFrameCallback(countSrcVideo);
+      if (s.video.requestVideoFrameCallback) s.video.requestVideoFrameCallback(() => countSrc(s));
       s.video.play().catch(() => {});
       s.status.textContent = 'Waiting for first inference...';
     });
   });
-}
-
-function countSrcVideo() {
-  const s = state.video;
-  if (!s.video || s.video.paused || s.video.ended) return;
-  s.srcCount++;
-  s.video.requestVideoFrameCallback(countSrcVideo);
 }
 
 function stopVideo() {
@@ -198,21 +182,22 @@ function stopVideo() {
 }
 
 function startLoops() {
-  setInterval(loopWebcam, 100);
-  setInterval(loopVideo, 100);
-  setInterval(meterWebcam, 1000);
-  setInterval(meterVideo, 1000);
+  setInterval(() => loopMedia(state.webcam, s => s.running), 100);
+  setInterval(() => loopMedia(state.video, s => !s.video.paused && !s.video.ended), 100);
+  setInterval(() => meter(state.webcam, () => !state.webcam.running), 1000);
+  setInterval(() => meter(state.video, () => state.video.video && (state.video.video.paused || state.video.video.ended)), 1000);
 }
 
-async function loopWebcam() {
-  const s = state.webcam;
-  if (!s.running || busy || !s.video || s.video.readyState < 2) return;
+async function loopMedia(s, readyFn) {
+  if (!readyFn(s) || busy || !s.video || s.video.readyState < 2) return;
   busy = true;
   try {
     const cap = document.createElement('canvas');
     cap.width = s.display.width;
     cap.height = s.display.height;
-    cap.getContext('2d').drawImage(s.video, 0, 0, cap.width, cap.height);
+    const vw = s.video.videoWidth || s.display.width;
+    const vh = s.video.videoHeight || s.display.height;
+    cap.getContext('2d').drawImage(s.video, 0, 0, vw, vh, 0, 0, cap.width, cap.height);
     if (!s.video.requestVideoFrameCallback) s.srcCount++;
     const blob = await new Promise(r => cap.toBlob(r, 'image/jpeg', 0.7));
     const t0 = performance.now();
@@ -230,47 +215,8 @@ async function loopWebcam() {
   }
 }
 
-async function loopVideo() {
-  const s = state.video;
-  if (!s.video || busy || s.video.readyState < 2 || s.video.paused || s.video.ended) return;
-  busy = true;
-  try {
-    const cap = document.createElement('canvas');
-    cap.width = s.display.width;
-    cap.height = s.display.height;
-    cap.getContext('2d').drawImage(s.video, 0, 0, cap.width, cap.height);
-    if (!s.video.requestVideoFrameCallback) s.srcCount++;
-    const blob = await new Promise(r => cap.toBlob(r, 'image/jpeg', 0.7));
-    const t0 = performance.now();
-    const dets = await detectFrame(blob);
-    s.infCount++;
-    s.lastMs = Math.round(performance.now() - t0);
-    s.lastDets = dets.length;
-    const ctx = s.display.getContext('2d');
-    ctx.drawImage(cap, 0, 0, s.display.width, s.display.height);
-    draw(dets, ctx);
-  } catch (e) {
-    s.status.textContent = 'Error: ' + e.message;
-  } finally {
-    busy = false;
-  }
-}
-
-function meterWebcam() {
-  const s = state.webcam;
-  if (!s.running) return;
-  s.status.textContent = s.infCount + '/' + s.srcCount + ' fps | ' + s.lastMs + ' ms | ' + s.lastDets + ' object(s)';
-  s.infCount = 0;
-  s.srcCount = 0;
-}
-
-function meterVideo() {
-  const s = state.video;
-  if (!s.video) return;
-  if (s.video.paused || s.video.ended) {
-    s.status.textContent = 'Paused.';
-    return;
-  }
+function meter(s, pausedFn) {
+  if (pausedFn && pausedFn()) { s.status.textContent = 'Paused.'; return; }
   s.status.textContent = s.infCount + '/' + s.srcCount + ' fps | ' + s.lastMs + ' ms | ' + s.lastDets + ' object(s)';
   s.infCount = 0;
   s.srcCount = 0;

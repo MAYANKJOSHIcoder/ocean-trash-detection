@@ -36,11 +36,6 @@ PORT = int(config.get("port", "5000"))
 
 registry = ModelRegistry(ROOT, conf=CONF_THRESHOLD)
 
-if model_name not in registry.metadata:
-    sys.exit(f"ERROR: Model '{model_name}' not discovered. Available: {list(registry.metadata.keys())}")
-
-current_model = model_name
-
 app = Flask(__name__, static_folder="../frontend", static_url_path="", template_folder="../frontend")
 
 
@@ -49,22 +44,10 @@ def index():
     return render_template("index.html")
 
 
-@app.route("/api/models")
-def get_models():
-    return jsonify(registry.get_available())
-
-
-@app.route("/api/model/current")
-def get_current_model():
-    return jsonify({"model": current_model})
-
-
 @app.route("/api/detect", methods=["POST"])
 def detect():
-    if current_model is None:
-        return jsonify({"error": "no model loaded"}), 500
     try:
-        dets = registry.predict(current_model, request.get_data())
+        dets = registry.predict(model_name, request.get_data())
         return jsonify(dets)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -73,5 +56,5 @@ def detect():
 
 
 if __name__ == "__main__":
-    print(f"[backend] model: {current_model}, device: {registry.device}, port: {PORT}")
+    print(f"[backend] model: {model_name}, device: {registry.device}, port: {PORT}")
     app.run(host="0.0.0.0", port=PORT, threaded=True)
