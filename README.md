@@ -1,6 +1,6 @@
-# Object Detection Web App
+# BlueLens · AI Pollution Monitoring
 
-Single-page Flask app with YOLO object detection. Three modes in one interface: Image upload, Live Webcam, and Video playback.
+AI-powered underwater waste detection. Single-page Flask app with YOLO — detects plastic and marine debris from images, webcam, and video.
 
 ## Quick Start
 
@@ -27,7 +27,7 @@ model/
 │   ├── detect.py          # ModelRegistry (lazy-load, GPU/CPU)
 │   └── requirements.txt
 ├── frontend/
-│   ├── index.html         # Single page: hero + 3 tabs
+│   ├── index.html         # Single page: navbar + home panel + 3 detection panels
 │   ├── style.css
 │   └── app.js
 ├── best.pt                # Default model (15 custom classes)
@@ -40,7 +40,7 @@ model/
 ## Configuration (`model.txt`)
 
 ```ini
-model=best.pt      # Model filename (must exist in project root)
+model=nano.pt      # Model filename (must exist in project root)
 conf=0.35          # Confidence threshold (0.0-1.0)
 port=5000          # HTTP port
 ```
@@ -53,19 +53,19 @@ port=5000          # HTTP port
 
 ## UI
 
-- **Hero**: Title and description
-- **3 Tabs**: Image / Webcam / Video (switch without reload)
+- **Navbar**: Home / Image / Webcam / Video (switch without reload)
+- **Home panel**: Hero + feature grid
 - **Status line**: Shows FPS, inference time, object count
 
-### Image Tab
+### Image Panel
 - Click "Choose image" → select file → detection runs once → boxes drawn
 
-### Webcam Tab
+### Webcam Panel
 - Click "Start camera" → grants permission → live detection loop
 - Only frames completing inference are displayed
 - Click "Stop camera" to end
 
-### Video Tab
+### Video Panel
 - Click "Choose video" → select file → plays looped like webcam
 - Detection runs on each frame that completes inference
 
@@ -105,7 +105,7 @@ Place `.pt` files in project root. Server discovers all `*.pt` at startup.
 ## Deployment
 
 - Point start command at `main.py` or `backend/app.py`
-- Ensure `best.pt` (and other models) are in project root
+- Ensure `nano.pt` (and other models) are in project root
 - Set `port` in `model.txt` to match platform (e.g., `$PORT` on Render/Railway)
 - Webcam requires HTTPS or localhost (browser security)
 
