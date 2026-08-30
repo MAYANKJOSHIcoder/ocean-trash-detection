@@ -7,7 +7,9 @@ AI-powered underwater waste detection. Single-page Flask app with YOLO — detec
 ```bash
 # Install dependencies
 pip install -r backend/requirements.txt
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+
+# Install PyTorch (CUDA build; plain `pip install torch torchvision` works too, CPU fallback)
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 
 # Run
 python main.py
@@ -21,10 +23,11 @@ Open http://localhost:5000
 
 ```
 model/
+├── .gitignore
 ├── model.txt              # Config: model=, conf=, port=
 ├── backend/
 │   ├── app.py             # Flask server + API
-│   ├── detect.py          # ModelRegistry (lazy-load, GPU/CPU)
+│   ├── detect.py          # ModelRegistry (lazy-load, GPU/CPU, FP16)
 │   └── requirements.txt
 ├── frontend/
 │   ├── index.html         # Single page: navbar + home panel + 3 detection panels
@@ -55,23 +58,22 @@ port=5000          # HTTP port
 
 - **Navbar**: Home / Image / Webcam / Video (switch without reload)
 - **Home panel**: Hero + feature grid
-- **Status line**: Shows FPS, inference time, object count
+- **Status line**: Shows inference FPS, inference time (ms), object count
 
 ### Image Panel
-- Click "Choose image" → select file → detection runs once → boxes drawn
+- Click "Choose image" → select file → detection runs once → boxes drawn with class + confidence
 
 ### Webcam Panel
-- Click "Start camera" → grants permission → live detection loop
+- Switching to the Webcam tab auto-starts the camera (permission prompt); the button toggles start/stop
 - Only frames completing inference are displayed
-- Click "Stop camera" to end
 
 ### Video Panel
-- Click "Choose video" → select file → plays looped like webcam
+- Click "Choose video" → select file → plays looped like a webcam feed
 - Detection runs on each frame that completes inference
 
 ## Models
 
-Place `.pt` files in project root. Server discovers all `*.pt` at startup.
+Place `.pt` files in project root. Server discovers all `*.pt` at startup (the one named in `model.txt` is used).
 
 | Model | Classes | Source |
 |-------|---------|--------|
@@ -84,9 +86,14 @@ Place `.pt` files in project root. Server discovers all `*.pt` at startup.
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/` | Serves frontend |
-| GET | `/api/models` | List discovered models with classes |
-| GET | `/api/model/current` | Active model name |
-| POST | `/api/detect` | Run inference (body: JPEG bytes) → JSON boxes |
+| POST | `/api/detect` | Run inference (body: raw JPEG/PNG image bytes) → JSON boxes |
+
+### Detection Request
+```
+POST /api/detect
+Content-Type: image/jpeg
+Body: <raw image bytes>
+```
 
 ### Detection Response
 ```json
@@ -99,16 +106,18 @@ Place `.pt` files in project root. Server discovers all `*.pt` at startup.
 ## GPU Support
 
 - Auto-detects CUDA: uses GPU if `torch.cuda.is_available()`, else CPU
+- FP16 (half precision) enabled on CUDA for faster inference
 - For GPU: install CUDA-enabled PyTorch (see Quick Start)
 - Verify: `python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"`
+- Server binds `0.0.0.0` (accessible on LAN)
 
 ## Deployment
 
 - Point start command at `main.py` or `backend/app.py`
-- Ensure `nano.pt` (and other models) are in project root
+- Ensure `.pt` models are in project root
 - Set `port` in `model.txt` to match platform (e.g., `$PORT` on Render/Railway)
 - Webcam requires HTTPS or localhost (browser security)
 
 ## License
 
-MIT
+GPL-3.0 — see [LICENSE](LICENSE).
