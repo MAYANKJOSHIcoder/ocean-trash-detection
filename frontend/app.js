@@ -1,7 +1,8 @@
-const tabs = document.querySelectorAll('.tabs button');
-const panels = document.querySelectorAll('.tab-panel');
+const navBtns = document.querySelectorAll('.nav-links button');
+const panels = document.querySelectorAll('.panel');
+const logoLink = document.querySelector('.logo');
 
-let activeTab = 'image';
+let activePanel = 'home';
 let busy = false;
 
 const state = {
@@ -11,32 +12,36 @@ const state = {
 };
 
 async function init() {
-  setupTabs();
+  setupNav();
   setupImageMode();
   setupWebcamMode();
   setupVideoMode();
   startLoops();
 }
 
-function setupTabs() {
-  tabs.forEach(btn => {
-    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+function setupNav() {
+  navBtns.forEach(btn => {
+    btn.addEventListener('click', () => switchPanel(btn.dataset.panel));
   });
+  logoLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchPanel('home');
+  });
+  document.getElementById('tryDemoBtn').addEventListener('click', () => switchPanel('image'));
 }
 
-function switchTab(tab) {
-  if (tab === activeTab) return;
-  if (activeTab === 'webcam') stopWebcam();
-  else if (activeTab === 'video') stopVideo();
-  activeTab = tab;
-  tabs.forEach(btn => {
-    btn.setAttribute('aria-selected', btn.dataset.tab === tab);
+function switchPanel(panelId) {
+  if (panelId === activePanel) return;
+  if (activePanel === 'webcam') stopWebcam();
+  else if (activePanel === 'video') stopVideo();
+  activePanel = panelId;
+  navBtns.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.panel === panelId);
   });
   panels.forEach(p => {
-    p.classList.toggle('active', p.id === 'tab-' + tab);
+    p.classList.toggle('active', p.id === 'panel-' + panelId);
   });
-  if (tab === 'webcam') startWebcam();
-  else if (tab === 'video') startVideo();
+  if (panelId === 'webcam') startWebcam();
 }
 
 function setupImageMode() {
@@ -123,6 +128,11 @@ function setupWebcamMode() {
   });
 }
 
+// ponytail: start camera when the webcam tab opens; video can't auto-start (no file to pick)
+function startWebcam() {
+  if (!state.webcam.running) state.webcam.toggleBtn.click();
+}
+
 function countSrc(s) {
   if (!s.video || (s === state.video && (s.video.paused || s.video.ended))) return;
   s.srcCount++;
@@ -134,8 +144,10 @@ function stopWebcam() {
   s.running = false;
   if (s.stream) s.stream.getTracks().forEach(t => t.stop());
   s.stream = null;
+  s.video = null;
   s.toggleBtn.textContent = 'Start camera';
   s.status.textContent = 'Idle.';
+  s.stage.innerHTML = '<p class="placeholder">Camera is off.</p>';
 }
 
 function setupVideoMode() {
@@ -183,7 +195,7 @@ function stopVideo() {
 
 function startLoops() {
   setInterval(() => loopMedia(state.webcam, s => s.running), 100);
-  setInterval(() => loopMedia(state.video, s => !s.video.paused && !s.video.ended), 100);
+  setInterval(() => loopMedia(state.video, s => s.video && !s.video.paused && !s.video.ended), 100);
   setInterval(() => meter(state.webcam, () => !state.webcam.running), 1000);
   setInterval(() => meter(state.video, () => state.video.video && (state.video.video.paused || state.video.video.ended)), 1000);
 }
@@ -193,10 +205,10 @@ async function loopMedia(s, readyFn) {
   busy = true;
   try {
     const cap = document.createElement('canvas');
-    cap.width = s.display.width;
-    cap.height = s.display.height;
     const vw = s.video.videoWidth || s.display.width;
     const vh = s.video.videoHeight || s.display.height;
+    cap.width = s.display.width;
+    cap.height = s.display.height;
     cap.getContext('2d').drawImage(s.video, 0, 0, vw, vh, 0, 0, cap.width, cap.height);
     if (!s.video.requestVideoFrameCallback) s.srcCount++;
     const blob = await new Promise(r => cap.toBlob(r, 'image/jpeg', 0.7));
@@ -216,6 +228,7 @@ async function loopMedia(s, readyFn) {
 }
 
 function meter(s, pausedFn) {
+  if (!s.video) { s.status.textContent = 'Idle.'; return; }
   if (pausedFn && pausedFn()) { s.status.textContent = 'Paused.'; return; }
   s.status.textContent = s.infCount + '/' + s.srcCount + ' fps | ' + s.lastMs + ' ms | ' + s.lastDets + ' object(s)';
   s.infCount = 0;
@@ -224,7 +237,11 @@ function meter(s, pausedFn) {
 
 async function detectFrame(blob) {
   const res = await fetch('/api/detect', { method: 'POST', body: blob });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    let msg = 'Detection failed';
+    try { const body = await res.json(); msg = body.error || msg; } catch { msg = await res.text() || msg; }
+    throw new Error(msg);
+  }
   return await res.json();
 }
 
