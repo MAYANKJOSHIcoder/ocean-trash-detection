@@ -101,6 +101,10 @@ function setupWebcamMode() {
       stopWebcam();
       return;
     }
+    if (!navigator.mediaDevices) {
+      s.status.textContent = 'Camera requires HTTPS or localhost. Current address is not secure.';
+      return;
+    }
     try {
       s.stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 } } });
     } catch (e) {

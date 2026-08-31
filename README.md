@@ -106,7 +106,7 @@ Body: <raw image bytes>
 ## GPU Support
 
 - Auto-detects CUDA: uses GPU if `torch.cuda.is_available()`, else CPU
-- FP16 (half precision) enabled on CUDA for faster inference
+- FP16 (quantize) enabled on CUDA for faster inference
 - For GPU: install CUDA-enabled PyTorch (see Quick Start)
 - Verify: `python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"`
 - Server binds `0.0.0.0` (accessible on LAN)

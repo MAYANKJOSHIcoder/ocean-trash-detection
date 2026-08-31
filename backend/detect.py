@@ -10,7 +10,7 @@ class ModelRegistry:
         self.root = Path(root_path)
         self.conf = conf
         self.device = 0 if torch.cuda.is_available() else "cpu"
-        self.half = self.device != "cpu"
+        self.quantize = self.device != "cpu"
         self.models = {}
         self.metadata = {}
         self._discover()
@@ -35,7 +35,7 @@ class ModelRegistry:
         img = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
         if img is None:
             raise ValueError("invalid image")
-        result = model.predict(img, conf=self.conf, device=self.device, half=self.half, verbose=False)[0]
+        result = model.predict(img, conf=self.conf, device=self.device, quantize=self.quantize, verbose=False)[0]
         return [{
             "box": [round(v) for v in b.xyxy[0].tolist()],
             "conf": round(float(b.conf), 3),
