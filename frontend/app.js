@@ -246,9 +246,9 @@ async function detectFrame(blob) {
 }
 
 function draw(dets, ctx) {
-  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-  ctx.lineWidth = 2;
-  ctx.font = '13px ui-monospace, "Courier New", monospace';
+  const scale = Math.max(1, Math.round(Math.min(ctx.canvas.width, ctx.canvas.height) / 800));
+  ctx.lineWidth = 2 * scale;
+  ctx.font = `${13 * scale}px ui-monospace, "Courier New", monospace`;
   for (const d of dets) {
     const [x1, y1, x2, y2] = d.box;
     ctx.strokeStyle = '#141414';
