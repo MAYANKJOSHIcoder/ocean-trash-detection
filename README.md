@@ -106,10 +106,20 @@ Body: <raw image bytes>
 ## GPU Support
 
 - Auto-detects CUDA: uses GPU if `torch.cuda.is_available()`, else CPU
-- FP16 (quantize) enabled on CUDA for faster inference
+- GPU inference uses fp32 (measured fastest; ultralytics 8.4.x rejects `half`/`quantize=True`)
 - For GPU: install CUDA-enabled PyTorch (see Quick Start)
 - Verify: `python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"`
 - Server binds `0.0.0.0` (accessible on LAN)
+
+## Performance
+
+Measured on RTX 4050 Laptop GPU (6GB), `best.pt`, 640px:
+
+| Config | Speed |
+|--------|-------|
+| Inference, GPU fp32 | ~23 ms/frame ≈ 40 fps |
+| UI display (16 ms polling) | ~20-25 fps |
+| Inference, CPU fallback | ~1.4 fps |
 
 ## Deployment
 

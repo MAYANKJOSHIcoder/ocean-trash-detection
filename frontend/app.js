@@ -198,8 +198,8 @@ function stopVideo() {
 }
 
 function startLoops() {
-  setInterval(() => loopMedia(state.webcam, s => s.running), 100);
-  setInterval(() => loopMedia(state.video, s => s.video && !s.video.paused && !s.video.ended), 100);
+  setInterval(() => loopMedia(state.webcam, s => s.running), 16);
+  setInterval(() => loopMedia(state.video, s => s.video && !s.video.paused && !s.video.ended), 16);
   setInterval(() => meter(state.webcam, () => !state.webcam.running), 1000);
   setInterval(() => meter(state.video, () => state.video.video && (state.video.video.paused || state.video.video.ended)), 1000);
 }
