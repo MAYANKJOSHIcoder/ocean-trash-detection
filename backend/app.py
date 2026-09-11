@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 from flask import Flask, request, jsonify, render_template
+from waitress import serve
 
 from detect import ModelRegistry
 
@@ -57,4 +58,4 @@ def detect():
 
 if __name__ == "__main__":
     print(f"[backend] model: {model_name}, device: {registry.device}, port: {PORT}")
-    app.run(host="0.0.0.0", port=PORT, threaded=True)
+    serve(app, host="0.0.0.0", port=PORT, threads=4)
